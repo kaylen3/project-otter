@@ -8,7 +8,7 @@
 #define USERNAME_LENGTH 6
 
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
-HX711_ADC LoadCell(7,6);
+HX711_ADC LoadCell(DOUT,CLK);
 
 
 
