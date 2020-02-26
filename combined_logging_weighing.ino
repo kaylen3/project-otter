@@ -1,3 +1,4 @@
+random_change;
 #include <HX711_ADC.h>
 #include <EEPROM.h>
 #include <LiquidCrystal.h>
