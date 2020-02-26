@@ -4,7 +4,6 @@ random_change;
 #include <LiquidCrystal.h>
 #include <Wire.h>
 
-#define DOUT 7
 #define CLK 6
 #define USERNAME_LENGTH 6
 
