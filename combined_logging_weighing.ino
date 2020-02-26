@@ -183,7 +183,7 @@ void enroll_new_user(){
 //return(name, weight_goal, weight, pressure_array)
 }
 
-int checkfornewbuttonpush(){
+int checkforinput(){
    if(digitalRead(A3) == LOW){
     enroll_new_user();
   }
@@ -193,7 +193,7 @@ int checkfornewbuttonpush(){
 }
 
 void loop() {
-  checkfornewbuttonpush();
+  checkforinput();
     
 }
 
