@@ -10,11 +10,11 @@
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 HX711_ADC LoadCell(7,6);
 
-float i = 0;
-float calibrationfactor = 22680;
-float poundfactor = 2.20662;
+
 
 void setup() {
+  float calibrationfactor = 22680;
+  float poundfactor = 2.20662;
   lcd.begin(16, 2);  
   lcd.clear();
   lcd.setCursor(0,0);
@@ -32,7 +32,7 @@ void setup() {
   pinMode(A3, INPUT);
 }
 
-int printdata(){ //prints weight data
+int printdata(int i){ //prints weight data
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Weight [lbs]:");
@@ -53,6 +53,7 @@ int checkforstep(){ //Checks if user has stepped on scale
 }
 
 int takeweight(){
+  float i = 0;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Weighing...");
@@ -63,13 +64,13 @@ int takeweight(){
       i = 0;
     }
   }
-  printdata(); //prints the 10000th reading
+  printdata(i); //prints the 10000th reading
   while(i>5){ //pauses while user is still on scale
     LoadCell.update();
     i = LoadCell.getData();
   }
   lcd.clear();
-  return i;
+  //return i;
 }
 
 char enter_name() { //need to return name as string (look into pointers)
