@@ -53,6 +53,7 @@ int checkforstep(){ //Checks if user has stepped on scale
 }
 
 int takeweight(){
+//add description
   float i = 0;
   lcd.clear();
   lcd.setCursor(0,0);
