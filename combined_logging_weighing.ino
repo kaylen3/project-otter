@@ -10,8 +10,6 @@
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 HX711_ADC LoadCell(DOUT,CLK);
 
-
-
 void setup() {
   float calibrationfactor = 22680;
   float poundfactor = 2.20662;
@@ -32,7 +30,8 @@ void setup() {
   pinMode(A3, INPUT);
 }
 
-int printdata(int i){ //prints weight data
+int printdata(int i){ 
+//**prints weight data measured in take_weight()**//
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Weight [lbs]:");
@@ -40,7 +39,8 @@ int printdata(int i){ //prints weight data
     lcd.print(i, 1);
 }
 
-int checkforstep(){ //Checks if user has stepped on scale
+int checkforstep(){ 
+//**Checks if user has stepped on scale**//
   LoadCell.update();
   float i = LoadCell.getData();
   if(i>5){ //checks if load cells have exceeded 5 lbs, min weight is 5
@@ -53,7 +53,7 @@ int checkforstep(){ //Checks if user has stepped on scale
 }
 
 int takeweight(){
-//add description
+//**uses loadcell functions to measure user's weight, returns weight**//
   float i = 0;
   lcd.clear();
   lcd.setCursor(0,0);
@@ -74,7 +74,8 @@ int takeweight(){
   //return i;
 }
 
-char enter_name() { //need to return name as string (look into pointers)
+char enter_name() { //need to return name as string (look into pointers)*****
+//**instructs the user to input a name, returns said name**//
   char letter = 'A';
   char user[USERNAME_LENGTH];
   int name_index = 1;
@@ -137,6 +138,7 @@ char enter_name() { //need to return name as string (look into pointers)
 
 
 int weight_goal() {
+//**asks users for a 3 digit weight goal in lbs, returns weight goal**//
    float weight_goal = 0;
    int number = 0;
    int weight_index = 0;
@@ -178,14 +180,16 @@ int weight_goal() {
 }
 
 void enroll_new_user(){
+//**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
   char personName = enter_name();
   int weightGoal = weight_goal();
-  checkforstep();
+  checkforstep(); //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
 //run pressure sensing function
 //return(name, weight_goal, weight, pressure_array)
 }
 
 int checkforinput(){
+//**waits for either the new user button to be pushed or for a registered user to step on the scale**//
    if(digitalRead(A3) == LOW){
     enroll_new_user();
   }
@@ -198,8 +202,6 @@ void loop() {
   checkforinput();
     
 }
-
-
 
 void log_weight(int user_address, unsigned short weight) {
   //Check which weight entry it is
