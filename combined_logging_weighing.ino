@@ -1,17 +1,34 @@
 #include <HX711_ADC.h>
 #include <EEPROM.h>
 #include <LiquidCrystal.h>
-#include <Wire.h>
+//#include <Wire.h> //dont think we need
 
-#define DOUT 7
-#define CLK 6
+#define DOUT 10
+#define CLK 11
 #define USERNAME_LENGTH 6
+#define RS 9
+#define E 8
+#define D7 4
+#define D6 5
+#define D5 6
+#define D4 7
+#define S0 3
+#define S1 2
+#define S2 1
+#define S3 0
+#define MUXOUT A0
+#define INPUTUP A1
+#define INPUTDOWN A2
+#define INPUTSELECT A3
+#define NEWUSERENROLL A4
 
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2); //need to change
+LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
+//LiquidCrystal lcd(12, 11, 5, 4, 3, 2); //need to change
 HX711_ADC LoadCell(DOUT,CLK);
+
 byte select_matrix [12] = { B0000, B1000, B0100, B1100, B0010, B1010, B0110, B1110, B0001, B1001, B0101, B1101 };
-int select_pin [4] = { 0, 1, 2, 3 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; pins are labelled backwards on MUX, S0 is actually S3, ...
+int select_pin [4] = { S3, S2, S1, S0 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; pins are labelled backwards on MUX, S0 is actually S3, ...
 
 int checkforinput();
 void enroll_new_user();
@@ -38,10 +55,10 @@ void setup() {
   LoadCell.setCalFactor(calibrationfactor/poundfactor);
   lcd.clear();
   // name and weight goal 
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
-  pinMode(A3, INPUT);
+  pinMode(INPUTUP, INPUT);
+  pinMode(INPUTDOWN, INPUT);
+  pinMode(INPUTSELECT, INPUT);
+  pinMode(ENROLLNEWUSER, INPUT);
   //Set MUX select signals pins as digital outputs
   for(int i=0; i < 4; i++) {
     pinMode(select_pin[i], OUTPUT);
@@ -54,7 +71,7 @@ void loop() {
 
 int checkforinput(){
   //**waits for either the new user button to be pushed or for a registered user to step on the scale**//
-   if(digitalRead(A3) == LOW){
+   if(digitalRead(NEWUSERENROLL) == LOW){
     enroll_new_user();
   }
   else {
@@ -92,10 +109,8 @@ void enroll_new_user(){
      appliedWeight = LoadCell.getData();
      weight = takeweight();
   }
-  log_weight(user_address, weight); //fix this function
-  //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
-//run pressure sensing function\
-//return(name, weight_goal, weight, pressure_array)
+  log_weight(user_address, weight);
+//run pressure sensing function AND PRESSURE LOGGING FUNCTION
 }
 
 char * enter_name() { //need to return name as string (look into pointers)
@@ -118,7 +133,7 @@ char * enter_name() { //need to return name as string (look into pointers)
     name_cursor = name_index-1;
     lcd.setCursor(name_cursor,1);
     lcd.print(letter);
-    if(digitalRead(A0) == LOW){ //input == up
+    if(digitalRead(INPUTUP) == LOW){ //input == up
       if(letter != '['){
         letter++;
       }
@@ -127,7 +142,7 @@ char * enter_name() { //need to return name as string (look into pointers)
       }
       delay(200);
     }
-    else if(digitalRead(A1) == LOW){ //input == down
+    else if(digitalRead(INPUTDOWN) == LOW){ //input == down
       if(letter != 'A'){
         letter--;
       }
@@ -136,7 +151,7 @@ char * enter_name() { //need to return name as string (look into pointers)
       }
       delay(200);
     }
-    else if(digitalRead(A2) == LOW){ //input == select
+    else if(digitalRead(INPUTSELECT) == LOW){ //input == select
       if(letter != ']'){
         user[name_index-1] = letter;
       }
@@ -168,7 +183,7 @@ int enter_weight_goal() {
    while(weight_index <= 2){
     lcd.setCursor(weight_index,1);
     lcd.print(number);
-    if(digitalRead(A0) == LOW){ //input == up
+    if(digitalRead(INPUTUP) == LOW){ //input == up
       if(number!= 9){
         number++;
       }
@@ -177,7 +192,7 @@ int enter_weight_goal() {
       }
     delay(200);
     }
-    else if (digitalRead(A1) == LOW) { //input == down
+    else if (digitalRead(INPUTDOWN) == LOW) { //input == down
       if(number != 0){
         number--;
       }
@@ -186,7 +201,7 @@ int enter_weight_goal() {
       }
     delay(200);
     }
-    else if (digitalRead(A2) == LOW) { //input == select
+    else if (digitalRead(INPUTSELECT) == LOW) { //input == select
       weight_goal += number * pow(10,2-weight_index);
       weight_index++;
       number = 0; 
