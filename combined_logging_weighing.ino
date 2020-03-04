@@ -178,7 +178,22 @@ int enter_weight_goal() {
 
 void enroll_new_user(){
   //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
-  char * personsName = enter_name();
+  char * personsName = enter_name(); //this is an address to the first element of the username array
+  
+  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){ //increment through each character of username and store in EEPROM
+    EEPROM.write(user_address + i, *personName);
+    personsName++; //increment pointer
+  }
+  char name[6];
+  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){
+    name[i] = EEPROM.read(user_address + i);
+  }
+  
+  lcd.clear(); //these three lines are for testing
+  lcd.setCursor(0,0);
+  lcd.print(name);
+  delay(2000);
+  
   int weightGoal = enter_weight_goal();
  // checkforstep(); //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
 //run pressure sensing function\
