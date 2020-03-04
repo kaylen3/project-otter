@@ -58,7 +58,7 @@ void setup() {
   pinMode(INPUTUP, INPUT);
   pinMode(INPUTDOWN, INPUT);
   pinMode(INPUTSELECT, INPUT);
-  pinMode(ENROLLNEWUSER, INPUT);
+  pinMode(NEWUSERENROLL, INPUT);
   //Set MUX select signals pins as digital outputs
   for(int i=0; i < 4; i++) {
     pinMode(select_pin[i], OUTPUT);
@@ -316,7 +316,7 @@ void log_weight(int user_address, unsigned short weight) {
   }
 }
 
-int * takePressure() {
+int * takePressure() { // add malloc/free for pointer
   delay(2000);// 2 second delay to allow user to stop moving
 
   int foot_map [12] = {0}; 
