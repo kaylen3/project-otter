@@ -18,6 +18,8 @@ int checkforstep();
 int takeweight();
 void log_weight(int, unsigned short);
 int printdata(int);
+int * takePressure();
+void logPressure(int, int *);
 
 void setup() {
   float calibrationfactor = 22660; //originally 22680
@@ -224,6 +226,7 @@ int takeweight(){
 }
 
 void log_weight(int user_address, unsigned short weight) {
+  //**logs weight entry into EEPROM location for specified user**//
   //Check which weight entry it is
   byte entry = EEPROM.read(user_address + 40);
 
@@ -235,7 +238,7 @@ void log_weight(int user_address, unsigned short weight) {
   EEPROM.update(weight_address, weight);
   EEPROM.write(user_address + 40, EEPROM.read(user_address + 40) + 1);
 
-  //Calculate goal difference and weight difference
+  //Calculate goal difference and weight difference ***MAKE THIS IT'S OWN FUNCTION
   unsigned short goal_weight, last_weight;
   EEPROM.get(user_address + 6, goal_weight);
   if (weight_address == (user_address + 20)) {
@@ -288,6 +291,52 @@ void log_weight(int user_address, unsigned short weight) {
     lcd.print(goal_difference);
     lcd.setCursor(3,1);
     lcd.print("pounds below goal");
+  }
+}
+
+int * takePressure() {
+  delay(2000);// 2 second delay to allow user to stop moving
+
+  int foot_map [12] = {0}; 
+  
+  for(byte select_signal=0; select_signal < 12; select_signal++){ 
+    
+    //Set the MUX select signal
+    for(int i=0; i < 4; i++) {
+      digitalWrite(select_pin[i], bitRead(select_matrix[select_signal],i));
+    }
+
+    //Read 10 samples from pressure sensor
+    int intermediate_pressure = 0;
+    for(int sample=0; sample < 10; sample++) {
+      intermediate_pressure = intermediate_pressure + analogRead(A0);
+      delay(500);
+    }
+
+    //Average the 10 samples and store in foot map
+    foot_map[select_signal] = intermediate_pressure / 10;
+    
+    //Return a pointer to the first value of the foot map
+    return foot_map; 
+}
+
+void logPressure(int user_address, int foot_map[]) {
+  //Check if it is the first input
+  int sum = 0;
+  for(int i = 0; i < 12; ++i) {
+    sum = sum + EEPROM.read(user_address + 8 + i);
+  }
+
+  if(sum == 0) { //It is the first input, write directly to EEPROM
+    for(int i = 0; i < 12; ++i) {
+      EEPROM.update(user_address + 8 + i, foot_map[i]);
+    }
+  }
+  else { //Not the first write, need to average the new values with the old ones (using exponential moving average)
+    byte entry = EEPROM.read(user_address + 40);
+    for(int i = 0; i < 12; ++i) {
+      EEPROM.update(user_address + 8 + i, (2*foot_map[i]/(entry+1)+(entry-1)*EEPROM.read(user_address + 8 + i))/(entry+1));
+    }
   }
 }
 
