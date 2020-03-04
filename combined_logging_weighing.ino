@@ -56,24 +56,24 @@ int checkforstep(){
 
 int takeweight(){
   //**uses loadcell functions to measure user's weight, returns weight**//
-  float i = 0;
+  float userWeight = 0;
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Weighing...");
   for(float q = 0; q<20000; q++){ //cycles through 10000 readings
     LoadCell.update();
-    i = LoadCell.getData();
-    if(i<0){
-      i = 0;
+    userWeight = LoadCell.getData();
+    if(userWeight<0){
+      userWeight = 0;
     }
   }
-  printdata(i); //prints the 10000th reading
-  while(i>5){ //pauses while user is still on scale
+  printdata(userWeight); //prints the 10000th reading
+  while(userWeight>5){ //pauses while user is still on scale
     LoadCell.update();
-    i = LoadCell.getData();
+    userWeight = LoadCell.getData();
   }
   lcd.clear();
-  //return i;
+  return userWeight;
 }
 
 char * enter_name() { //need to return name as string (look into pointers)
@@ -179,10 +179,12 @@ int enter_weight_goal() {
 
 void enroll_new_user(){
   //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
+  
+  int user_address = 0; // need to find way to determine user_address
   char * personsName = enter_name(); //this is an address to the first element of the username array
   
   for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){ //increment through each character of username and store in EEPROM
-    EEPROM.write(user_address + i, *personName);
+    EEPROM.write(user_address + i, *personsName);
     personsName++; //increment pointer
   }
   free(personsName);
@@ -197,13 +199,22 @@ void enroll_new_user(){
   delay(2000);
   
   int weightGoal = enter_weight_goal();
- // checkforstep(); //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
+ 
+  int appliedWeight = 0;
+  int weight = 0;
+  while(appliedWeight<5){
+     LoadCell.update();
+     appliedWeight = LoadCell.getData();
+     weight = takeweight();
+  }
+  log_weight(user_address, weight); //fix this function
+  //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
 //run pressure sensing function\
 //return(name, weight_goal, weight, pressure_array)
 }
 
 int checkforinput(){
-  /**waits for either the new user button to be pushed or for a registered user to step on the scale**//
+  //**waits for either the new user button to be pushed or for a registered user to step on the scale**//
    if(digitalRead(A3) == LOW){
     enroll_new_user();
   }
