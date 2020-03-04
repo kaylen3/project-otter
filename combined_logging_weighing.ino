@@ -325,6 +325,7 @@ int * takePressure() {
     
     //Return a pointer to the first value of the foot map
     return foot_map; 
+  }
 }
 
 void logPressure(int user_address, int foot_map[]) {
