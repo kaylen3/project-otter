@@ -78,6 +78,7 @@ int takeweight(){
 
 char * enter_name() { //need to return name as string (look into pointers)
   //**instructs the user to input a name, returns said name**//
+  char *username = (char*)malloc (sizeof (char) * USERNAME_LENGTH);
   char letter = 'A';
   char user[USERNAME_LENGTH];
   int name_index = 1;
@@ -122,7 +123,7 @@ char * enter_name() { //need to return name as string (look into pointers)
       delay(200);
     }
   }
-  char username[USERNAME_LENGTH];
+  //char username[USERNAME_LENGTH];
   for(int i = 0; i < name_index-2; i++){
    username[i] = user[i];    
   }
@@ -184,6 +185,7 @@ void enroll_new_user(){
     EEPROM.write(user_address + i, *personName);
     personsName++; //increment pointer
   }
+  free(personsName);
   char name[6];
   for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){
     name[i] = EEPROM.read(user_address + i);
