@@ -76,7 +76,7 @@ int takeweight(){
   //return i;
 }
 
-char enter_name() { //need to return name as string (look into pointers)
+char * enter_name() { //need to return name as string (look into pointers)
   //**instructs the user to input a name, returns said name**//
   char letter = 'A';
   char user[USERNAME_LENGTH];
@@ -129,6 +129,7 @@ char enter_name() { //need to return name as string (look into pointers)
   for(int i = name_index-2; i < USERNAME_LENGTH; i++){
     username[i] = ' ';
   }
+  return username;
 }
 
 
@@ -177,7 +178,7 @@ int enter_weight_goal() {
 
 void enroll_new_user(){
   //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
-  char personsName = enter_name();
+  char * personsName = enter_name();
   int weightGoal = enter_weight_goal();
  // checkforstep(); //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
 //run pressure sensing function\
