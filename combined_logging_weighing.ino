@@ -10,13 +10,13 @@
 LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
 HX711_ADC LoadCell(DOUT,CLK);
 
-int checkforinput()
-void enroll_new_user()
+int checkforinput();
+void enroll_new_user();
 char * enter_name();
-int enter_weight_goal()
+int enter_weight_goal();
 int checkforstep();
 int takeweight();
-void log_weight(int, unsigned short)
+void log_weight(int, unsigned short);
 int printdata(int);
 
 void setup() {
