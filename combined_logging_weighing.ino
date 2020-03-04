@@ -7,8 +7,11 @@
 #define CLK 6
 #define USERNAME_LENGTH 6
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+LiquidCrystal lcd(12, 11, 5, 4, 3, 2); //need to change
 HX711_ADC LoadCell(DOUT,CLK);
+byte select_matrix [12] = { B0000, B1000, B0100, B1100, B0010, B1010, B0110, B1110, B0001, B1001, B0101, B1101 };
+int select_pin [4] = { 0, 1, 2, 3 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; pins are labelled backwards on MUX, S0 is actually S3, ...
 
 int checkforinput();
 void enroll_new_user();
@@ -39,6 +42,10 @@ void setup() {
   pinMode(A1, INPUT);
   pinMode(A2, INPUT);
   pinMode(A3, INPUT);
+  //Set MUX select signals pins as digital outputs
+  for(int i=0; i < 4; i++) {
+    pinMode(select_pin[i], OUTPUT);
+  }
 }
 
 void loop() {
