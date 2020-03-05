@@ -32,10 +32,11 @@ int select_pin [4] = { S3, S2, S1, S0 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; p
 int checkForInput();
 void enrollNewUser();
 char * enterName();
-int enterWeightGoal();
+unsigned short enterWeightGoal();
 int checkForStep();
 int takeWeight();
 void logWeight(int, unsigned short);
+void goalStatus(int, int, unsigned short);
 int printData(int);
 int * takePressure();
 void logPressure(int, int *);
@@ -52,8 +53,7 @@ void setup() {
   LoadCell.begin();
   LoadCell.start(2000);
   LoadCell.setCalFactor(calibrationfactor/poundfactor);
-  lcd.clear();
-  // name and weight goal 
+  lcd.clear(); 
   pinMode(INPUTUP, INPUT);
   pinMode(INPUTDOWN, INPUT);
   pinMode(INPUTSELECT, INPUT);
@@ -82,38 +82,64 @@ void enrollNewUser(){
   //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
   
   int user_address = 0; // need to find way to determine user_address
-  char * personsName = enterName(); //this is an address to the first element of the username array
   
-  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){ //increment through each character of username and store in EEPROM
+  //get user's name
+  char * personsName = enterName(); 
+  
+   //store user's name in EEPROM
+  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){
     EEPROM.write(user_address + i, *personsName);
-    personsName++; //increment pointer
+    personsName++;
   }
   free(personsName);
-  char name[6];
-  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){
-    name[i] = EEPROM.read(user_address + i);
-  }
   
-  lcd.clear(); //these three lines are for testing
-  lcd.setCursor(0,0);
-  lcd.print(name);
-  delay(2000);
-  
+  //get user's weight goal
   int weightGoal = enterWeightGoal();
+  
+  //store user's weight goal in EEPROM
+  EEPROM.write(user_address + 6, weightGoal);
  
-  int appliedWeight = 0;
-  int weight = 0;
-  while(appliedWeight<5){
-     LoadCell.update();
-     appliedWeight = LoadCell.getData();
-     weight = takeweight();
+  //have the user step on and off the scale 5 times
+  for(int i = 0; i<5; i++) { 
+    
+    //instruct user to step on the scale
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Please step on");
+  
+    //get user's weight
+    int appliedWeight = 0;
+    int weight = 0;
+    while(appliedWeight<5){ //wait until user steps on scale
+      LoadCell.update();
+      appliedWeight = LoadCell.getData();
+      weight = takeWeight();
+    }
+  
+    //store user's weight in EEPROM
+    logWeight(user_address, weight);
+  
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Scanning..."); //might just wanna get rid of this, scanning is probably too fast
+    
+    //get user's foot map
+    int* foot_map = takePressure();
+  
+    //store foot map in EEPROM
+    logPressure(user_address, foot_map);
+    free(foot_map);
+    
+    //instruct user to step off the scale
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Please step off");
+    delay(2000);
   }
-  logWeight(user_address, weight);
-//run pressure sensing function AND PRESSURE LOGGING FUNCTION
 }
 
-char * enterName() { //need to return name as string (look into pointers)
-  //**instructs the user to input a name, returns said name**//
+char * enterName() { 
+  //**instructs the user to input a name, returns said name via a pointer**//
   char *username = (char*)malloc (sizeof (char) * USERNAME_LENGTH);
   char letter = 'A';
   char user[USERNAME_LENGTH];
@@ -168,9 +194,9 @@ char * enterName() { //need to return name as string (look into pointers)
   return username;
 }
 
-int enterWeightGoal() {
+unsigned short enterWeightGoal() {
   //**asks users for a 3 digit weight goal in lbs, returns weight goal**//
-   float weight_goal = 0;
+   unsigned short weight_goal = 0;
    int number = 0;
    int weight_index = 0;
    int weight_cursor;
@@ -208,7 +234,7 @@ int enterWeightGoal() {
     }
   }
   lcd.clear();
-  return weight_goal;
+  return weight_goal; 
 }
 
 int checkForStep(){
@@ -246,20 +272,24 @@ int takeWeight(){
   return userWeight;
 }
 
-void logWeight(int user_address, unsigned short weight) {
+void logWeight(int user_address, unsigned short weight) { 
   //**logs weight entry into EEPROM location for specified user**//
   //Check which weight entry it is
   byte entry = EEPROM.read(user_address + 40);
 
-  //If more than 10 entires exist, overwrite the oldest entry
-  while (entry >= 10) {
+  //If more than 10 entries exist, overwrite the oldest entry
+  while (entry >= 10) { //why is this a while and not an if??
     entry = entry - 10; 
   }
   int weight_address = user_address + 20 + (2*entry);
   EEPROM.update(weight_address, weight);
   EEPROM.write(user_address + 40, EEPROM.read(user_address + 40) + 1);
+}
 
-  //Calculate goal difference and weight difference ***MAKE THIS IT'S OWN FUNCTION
+void goalStatus(int user_address, int weight_address, unsigned short weight) { //need to figure out where this is being called to see how we can pass the weight_address in, could copy the code from logWeight(), but i think there's a cleaner way
+  //**Calculates and prints user's progress relative to their goals**//
+  
+  //Calculate goal difference and weight difference 
   unsigned short goal_weight, last_weight;
   EEPROM.get(user_address + 6, goal_weight);
   if (weight_address == (user_address + 20)) {
@@ -315,10 +345,11 @@ void logWeight(int user_address, unsigned short weight) {
   }
 }
 
-int * takePressure() { // add malloc/free for pointer
+int * takePressure() {
+  //** Cycles through 12 pressure sensors and returns pointer to array with their measurements in it**//
   delay(2000);// 2 second delay to allow user to stop moving
-
-  int foot_map [12] = {0}; 
+  int *foot_map = (int*)malloc (sizeof (int) * 12);
+  //int foot_map [12] = {0}; I don't think we need to do this anymore with the line above 
   
   for(byte select_signal=0; select_signal < 12; select_signal++){ 
     
@@ -342,7 +373,8 @@ int * takePressure() { // add malloc/free for pointer
   }
 }
 
-void logPressure(int user_address, int foot_map[]) {
+void logPressure(int user_address, int *foot_map) {
+  //** Takes pointer to foot map created by takePressure() and stores it in the user's profile in EEPROM**//
   //Check if it is the first input
   int sum = 0;
   for(int i = 0; i < 12; ++i) {
