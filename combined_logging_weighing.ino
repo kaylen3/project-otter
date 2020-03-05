@@ -24,20 +24,19 @@
 
 
 LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
-//LiquidCrystal lcd(12, 11, 5, 4, 3, 2); //need to change
 HX711_ADC LoadCell(DOUT,CLK);
 
 byte select_matrix [12] = { B0000, B1000, B0100, B1100, B0010, B1010, B0110, B1110, B0001, B1001, B0101, B1101 };
 int select_pin [4] = { S3, S2, S1, S0 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; pins are labelled backwards on MUX, S0 is actually S3, ...
 
-int checkforinput();
-void enroll_new_user();
-char * enter_name();
-int enter_weight_goal();
-int checkforstep();
-int takeweight();
-void log_weight(int, unsigned short);
-int printdata(int);
+int checkForInput();
+void enrollNewUser();
+char * enterName();
+int enterWeightGoal();
+int checkForStep();
+int takeWeight();
+void logWeight(int, unsigned short);
+int printData(int);
 int * takePressure();
 void logPressure(int, int *);
 
@@ -66,24 +65,24 @@ void setup() {
 }
 
 void loop() {
-  checkforinput();
+  checkForInput();
 }
 
-int checkforinput(){
+int checkForInput(){
   //**waits for either the new user button to be pushed or for a registered user to step on the scale**//
    if(digitalRead(NEWUSERENROLL) == LOW){
-    enroll_new_user();
+    enrollNewUser();
   }
   else {
-    checkforstep();
+    checkForStep();
   }
 }
 
-void enroll_new_user(){
+void enrollNewUser(){
   //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
   
   int user_address = 0; // need to find way to determine user_address
-  char * personsName = enter_name(); //this is an address to the first element of the username array
+  char * personsName = enterName(); //this is an address to the first element of the username array
   
   for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){ //increment through each character of username and store in EEPROM
     EEPROM.write(user_address + i, *personsName);
@@ -100,7 +99,7 @@ void enroll_new_user(){
   lcd.print(name);
   delay(2000);
   
-  int weightGoal = enter_weight_goal();
+  int weightGoal = enterWeightGoal();
  
   int appliedWeight = 0;
   int weight = 0;
@@ -109,11 +108,11 @@ void enroll_new_user(){
      appliedWeight = LoadCell.getData();
      weight = takeweight();
   }
-  log_weight(user_address, weight);
+  logWeight(user_address, weight);
 //run pressure sensing function AND PRESSURE LOGGING FUNCTION
 }
 
-char * enter_name() { //need to return name as string (look into pointers)
+char * enterName() { //need to return name as string (look into pointers)
   //**instructs the user to input a name, returns said name**//
   char *username = (char*)malloc (sizeof (char) * USERNAME_LENGTH);
   char letter = 'A';
@@ -169,7 +168,7 @@ char * enter_name() { //need to return name as string (look into pointers)
   return username;
 }
 
-int enter_weight_goal() {
+int enterWeightGoal() {
   //**asks users for a 3 digit weight goal in lbs, returns weight goal**//
    float weight_goal = 0;
    int number = 0;
@@ -212,12 +211,12 @@ int enter_weight_goal() {
   return weight_goal;
 }
 
-int checkforstep(){
+int checkForStep(){
   //**Checks if user has stepped on scale**//
   LoadCell.update();
   float i = LoadCell.getData();
   if(i>5){ //checks if load cells have exceeded 5 lbs, min weight is 5
-    takeweight();
+    takeWeight();
   }
   else {
     lcd.setCursor(0,0);
@@ -225,7 +224,7 @@ int checkforstep(){
   }
 }
 
-int takeweight(){
+int takeWeight(){
   //**uses loadcell functions to measure user's weight, returns weight**//
   float userWeight = 0;
   lcd.clear();
@@ -238,7 +237,7 @@ int takeweight(){
       userWeight = 0;
     }
   }
-  printdata(userWeight); //prints the 10000th reading
+  printData(userWeight); //prints the 10000th reading
   while(userWeight>5){ //pauses while user is still on scale
     LoadCell.update();
     userWeight = LoadCell.getData();
@@ -247,7 +246,7 @@ int takeweight(){
   return userWeight;
 }
 
-void log_weight(int user_address, unsigned short weight) {
+void logWeight(int user_address, unsigned short weight) {
   //**logs weight entry into EEPROM location for specified user**//
   //Check which weight entry it is
   byte entry = EEPROM.read(user_address + 40);
@@ -363,7 +362,7 @@ void logPressure(int user_address, int foot_map[]) {
   }
 }
 
-int printdata(int i){ 
+int printData(int i){ 
   //**prints weight data measured in take_weight()**//
     lcd.clear();
     lcd.setCursor(0,0);
