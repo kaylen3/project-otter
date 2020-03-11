@@ -1,15 +1,45 @@
 #include <HX711_ADC.h>
 #include <EEPROM.h>
 #include <LiquidCrystal.h>
-#include <Wire.h>
+//#include <Wire.h> //dont think we need
 
-#define DOUT 7
-#define CLK 6
+#define DOUT 10
+#define CLK 11
 #define USERNAME_LENGTH 6
+#define RS 9
+#define E 8
+#define D7 4
+#define D6 5
+#define D5 6
+#define D4 7
+#define S0 3
+#define S1 2
+#define S2 1
+#define S3 0
+#define MUXOUT A0
+#define INPUTUP A1
+#define INPUTDOWN A2
+#define INPUTSELECT A3
+#define NEWUSERENROLL A4
 
-LiquidCrystal lcd(12, 11, 5, 4, 3, 2);
+
+LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
 HX711_ADC LoadCell(DOUT,CLK);
 
+byte select_matrix [12] = { B0000, B1000, B0100, B1100, B0010, B1010, B0110, B1110, B0001, B1001, B0101, B1101 };
+int select_pin [4] = { S3, S2, S1, S0 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; pins are labelled backwards on MUX, S0 is actually S3, ...
+
+int checkForInput();
+void enrollNewUser();
+char * enterName();
+unsigned short enterWeightGoal();
+int checkForStep();
+int takeWeight();
+void logWeight(int, unsigned short);
+void goalStatus(int, int, unsigned short);
+int printData(int);
+int * takePressure();
+void logPressure(int, int *);
 
 void setup() {
   float calibrationfactor = 22660; //originally 22680
@@ -23,61 +53,94 @@ void setup() {
   LoadCell.begin();
   LoadCell.start(2000);
   LoadCell.setCalFactor(calibrationfactor/poundfactor);
-  lcd.clear();
-  // name and weight goal 
-  pinMode(A0, INPUT);
-  pinMode(A1, INPUT);
-  pinMode(A2, INPUT);
-  pinMode(A3, INPUT);
+  lcd.clear(); 
+  pinMode(INPUTUP, INPUT);
+  pinMode(INPUTDOWN, INPUT);
+  pinMode(INPUTSELECT, INPUT);
+  pinMode(NEWUSERENROLL, INPUT);
+  //Set MUX select signals pins as digital outputs
+  for(int i=0; i < 4; i++) {
+    pinMode(select_pin[i], OUTPUT);
+  }
 }
 
-
-int printdata(int i){ 
-  //**prints weight data measured in take_weight()**//
-    lcd.clear();
-    lcd.setCursor(0,0);
-    lcd.print("Weight [lbs]:");
-    lcd.setCursor(0, 1);
-    lcd.print(i, 1);
+void loop() {
+  checkForInput();
 }
 
-int checkforstep(){
-  //**Checks if user has stepped on scale**//
-  LoadCell.update();
-  float i = LoadCell.getData();
-  if(i>5){ //checks if load cells have exceeded 5 lbs, min weight is 5
-    takeweight();
+int checkForInput(){
+  //**waits for either the new user button to be pushed or for a registered user to step on the scale**//
+   if(digitalRead(NEWUSERENROLL) == LOW){
+    enrollNewUser();
   }
   else {
+    checkForStep();
+  }
+}
+
+void enrollNewUser(){
+  //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
+  
+  int user_address = 0; // need to find way to determine user_address
+  
+  //get user's name
+  char * personsName = enterName(); 
+  
+   //store user's name in EEPROM
+  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){
+    EEPROM.write(user_address + i, *personsName);
+    personsName++;
+  }
+  free(personsName);
+  
+  //get user's weight goal
+  int weightGoal = enterWeightGoal();
+  
+  //store user's weight goal in EEPROM
+  EEPROM.write(user_address + 6, weightGoal);
+ 
+  //have the user step on and off the scale 5 times
+  for(int i = 0; i<5; i++) { 
+    
+    //instruct user to step on the scale
+    lcd.clear();
     lcd.setCursor(0,0);
-    lcd.print("Ready to weigh");
-  }
-}
-
-int takeweight(){
-  //**uses loadcell functions to measure user's weight, returns weight**//
-  float i = 0;
-  lcd.clear();
-  lcd.setCursor(0,0);
-  lcd.print("Weighing...");
-  for(float q = 0; q<20000; q++){ //cycles through 10000 readings
-    LoadCell.update();
-    i = LoadCell.getData();
-    if(i<0){
-      i = 0;
+    lcd.print("Please step on");
+  
+    //get user's weight
+    int appliedWeight = 0;
+    int weight = 0;
+    while(appliedWeight<5){ //wait until user steps on scale
+      LoadCell.update();
+      appliedWeight = LoadCell.getData();
+      weight = takeWeight();
     }
+  
+    //store user's weight in EEPROM
+    logWeight(user_address, weight);
+  
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Scanning..."); //might just wanna get rid of this, scanning is probably too fast
+    
+    //get user's foot map
+    int* foot_map = takePressure();
+  
+    //store foot map in EEPROM
+    logPressure(user_address, foot_map);
+    free(foot_map);
+    
+    //instruct user to step off the scale
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Please step off");
+    delay(2000);
   }
-  printdata(i); //prints the 10000th reading
-  while(i>5){ //pauses while user is still on scale
-    LoadCell.update();
-    i = LoadCell.getData();
-  }
-  lcd.clear();
-  //return i;
 }
 
-char enter_name() { //need to return name as string (look into pointers)
-  //**instructs the user to input a name, returns said name**//
+char * enterName() { 
+  //**instructs the user to input a name, returns said name via a pointer**//
+  char *username = (char*)malloc (sizeof (char) * USERNAME_LENGTH);
   char letter = 'A';
   char user[USERNAME_LENGTH];
   int name_index = 1;
@@ -95,7 +158,7 @@ char enter_name() { //need to return name as string (look into pointers)
     name_cursor = name_index-1;
     lcd.setCursor(name_cursor,1);
     lcd.print(letter);
-    if(digitalRead(A0) == LOW){ //input == up
+    if(digitalRead(INPUTUP) == LOW){ //input == up
       if(letter != '['){
         letter++;
       }
@@ -104,7 +167,7 @@ char enter_name() { //need to return name as string (look into pointers)
       }
       delay(200);
     }
-    else if(digitalRead(A1) == LOW){ //input == down
+    else if(digitalRead(INPUTDOWN) == LOW){ //input == down
       if(letter != 'A'){
         letter--;
       }
@@ -113,7 +176,7 @@ char enter_name() { //need to return name as string (look into pointers)
       }
       delay(200);
     }
-    else if(digitalRead(A2) == LOW){ //input == select
+    else if(digitalRead(INPUTSELECT) == LOW){ //input == select
       if(letter != ']'){
         user[name_index-1] = letter;
       }
@@ -122,19 +185,18 @@ char enter_name() { //need to return name as string (look into pointers)
       delay(200);
     }
   }
-  char username[USERNAME_LENGTH];
   for(int i = 0; i < name_index-2; i++){
    username[i] = user[i];    
   }
   for(int i = name_index-2; i < USERNAME_LENGTH; i++){
     username[i] = ' ';
   }
+  return username;
 }
 
-
-int enter_weight_goal() {
+unsigned short enterWeightGoal() {
   //**asks users for a 3 digit weight goal in lbs, returns weight goal**//
-   float weight_goal = 0;
+   unsigned short weight_goal = 0;
    int number = 0;
    int weight_index = 0;
    int weight_cursor;
@@ -146,7 +208,7 @@ int enter_weight_goal() {
    while(weight_index <= 2){
     lcd.setCursor(weight_index,1);
     lcd.print(number);
-    if(digitalRead(A0) == LOW){ //input == up
+    if(digitalRead(INPUTUP) == LOW){ //input == up
       if(number!= 9){
         number++;
       }
@@ -155,7 +217,7 @@ int enter_weight_goal() {
       }
     delay(200);
     }
-    else if (digitalRead(A1) == LOW) { //input == down
+    else if (digitalRead(INPUTDOWN) == LOW) { //input == down
       if(number != 0){
         number--;
       }
@@ -164,7 +226,7 @@ int enter_weight_goal() {
       }
     delay(200);
     }
-    else if (digitalRead(A2) == LOW) { //input == select
+    else if (digitalRead(INPUTSELECT) == LOW) { //input == select
       weight_goal += number * pow(10,2-weight_index);
       weight_index++;
       number = 0; 
@@ -172,47 +234,62 @@ int enter_weight_goal() {
     }
   }
   lcd.clear();
-  return weight_goal;
+  return weight_goal; 
 }
 
-void enroll_new_user(){
-  //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
-  char personsName = enter_name();
-  int weightGoal = enter_weight_goal();
- // checkforstep(); //need to change somehow, if no one is stepping on the scale at the moment this is called it will not take a reading. Maybe add a message telling the user to get on the scale and add a while loop that ends only when someone steps on. After that we could just call the take_weight function
-//run pressure sensing function\
-//return(name, weight_goal, weight, pressure_array)
-}
-
-int checkforinput(){
-  /**waits for either the new user button to be pushed or for a registered user to step on the scale**//
-   if(digitalRead(A3) == LOW){
-    enroll_new_user();
+int checkForStep(){
+  //**Checks if user has stepped on scale**//
+  LoadCell.update();
+  float i = LoadCell.getData();
+  if(i>5){ //checks if load cells have exceeded 5 lbs, min weight is 5
+    takeWeight();
   }
   else {
-    checkforstep();
+    lcd.setCursor(0,0);
+    lcd.print("Ready to weigh");
   }
 }
 
-void loop() {
-  checkforinput();
+int takeWeight(){
+  //**uses loadcell functions to measure user's weight, returns weight**//
+  float userWeight = 0;
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Weighing...");
+  for(float q = 0; q<20000; q++){ //cycles through 10000 readings
+    LoadCell.update();
+    userWeight = LoadCell.getData();
+    if(userWeight<0){
+      userWeight = 0;
+    }
+  }
+  printData(userWeight); //prints the 10000th reading
+  while(userWeight>5){ //pauses while user is still on scale
+    LoadCell.update();
+    userWeight = LoadCell.getData();
+  }
+  lcd.clear();
+  return userWeight;
 }
 
-
-
-void log_weight(int user_address, unsigned short weight) {
+void logWeight(int user_address, unsigned short weight) { 
+  //**logs weight entry into EEPROM location for specified user**//
   //Check which weight entry it is
   byte entry = EEPROM.read(user_address + 40);
 
-  //If more than 10 entires exist, overwrite the oldest entry
-  while (entry >= 10) {
+  //If more than 10 entries exist, overwrite the oldest entry
+  while (entry >= 10) { //why is this a while and not an if??
     entry = entry - 10; 
   }
   int weight_address = user_address + 20 + (2*entry);
   EEPROM.update(weight_address, weight);
   EEPROM.write(user_address + 40, EEPROM.read(user_address + 40) + 1);
+}
 
-  //Calculate goal difference and weight difference
+void goalStatus(int user_address, int weight_address, unsigned short weight) { //need to figure out where this is being called to see how we can pass the weight_address in, could copy the code from logWeight(), but i think there's a cleaner way
+  //**Calculates and prints user's progress relative to their goals**//
+  
+  //Calculate goal difference and weight difference 
   unsigned short goal_weight, last_weight;
   EEPROM.get(user_address + 6, goal_weight);
   if (weight_address == (user_address + 20)) {
@@ -266,4 +343,62 @@ void log_weight(int user_address, unsigned short weight) {
     lcd.setCursor(3,1);
     lcd.print("pounds below goal");
   }
+}
+
+int * takePressure() {
+  //** Cycles through 12 pressure sensors and returns pointer to array with their measurements in it**//
+  delay(2000);// 2 second delay to allow user to stop moving
+  int *foot_map = (int*)malloc (sizeof (int) * 12);
+  //int foot_map [12] = {0}; I don't think we need to do this anymore with the line above 
+  
+  for(byte select_signal=0; select_signal < 12; select_signal++){ 
+    
+    //Set the MUX select signal
+    for(int i=0; i < 4; i++) {
+      digitalWrite(select_pin[i], bitRead(select_matrix[select_signal],i));
+    }
+
+    //Read 10 samples from pressure sensor
+    int intermediate_pressure = 0;
+    for(int sample=0; sample < 10; sample++) {
+      intermediate_pressure = intermediate_pressure + analogRead(A0);
+      delay(500);
+    }
+
+    //Average the 10 samples and store in foot map
+    foot_map[select_signal] = intermediate_pressure / 10;
+    
+    //Return a pointer to the first value of the foot map
+    return foot_map; 
+  }
+}
+
+void logPressure(int user_address, int *foot_map) {
+  //** Takes pointer to foot map created by takePressure() and stores it in the user's profile in EEPROM**//
+  //Check if it is the first input
+  int sum = 0;
+  for(int i = 0; i < 12; ++i) {
+    sum = sum + EEPROM.read(user_address + 8 + i);
+  }
+
+  if(sum == 0) { //It is the first input, write directly to EEPROM
+    for(int i = 0; i < 12; ++i) {
+      EEPROM.update(user_address + 8 + i, foot_map[i]);
+    }
+  }
+  else { //Not the first write, need to average the new values with the old ones (using exponential moving average)
+    byte entry = EEPROM.read(user_address + 40);
+    for(int i = 0; i < 12; ++i) {
+      EEPROM.update(user_address + 8 + i, (2*foot_map[i]/(entry+1)+(entry-1)*EEPROM.read(user_address + 8 + i))/(entry+1));
+    }
+  }
+}
+
+int printData(int i){ 
+  //**prints weight data measured in take_weight()**//
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Weight [lbs]:");
+    lcd.setCursor(0, 1);
+    lcd.print(i, 1);
 }
