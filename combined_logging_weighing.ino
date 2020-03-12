@@ -423,7 +423,7 @@ void identifyUser(){
   unsigned short newWeight = takeWeight();
   
   //take pressure reading
-  int* newFootMap = takePressure(); //need to free pointer!!
+  int* newFootMap = takePressure(); 
   
   //check how many users are registered
   int numberOfUsers = EEPROM.read(NUMBEROFUSERSADDRESS);
@@ -444,6 +444,8 @@ void identifyUser(){
       newFootMap++;
     }
     pressureDifference /= 12;
+    
+    newFootMap -= 12; 
    
     //compute difference in EMA weight in profile compared to measured weight
     weightDifference = fabs((newWeight - EEPROM.read(storedUserAddress + 20))/EEPROM.read(storedUserAddress + 20)); 
@@ -456,6 +458,9 @@ void identifyUser(){
     //cycle to next stored user
     storedUserAddress += 25;
   }
+  
+  //Free newFootMap pointer
+  free(newFootMap);
   
   //display, "Hello ___" to the chosen user
   lcd.clear();
