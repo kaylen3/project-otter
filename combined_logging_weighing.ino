@@ -437,9 +437,9 @@ void identifyUser(){
     
     //nested for loop computing the percent difference between all cells in the pressure measurements
     for(int j = 0; j < 12; j++){
-      singlepressureDifference[j] = fabs((*newFootMap - EEPROM.read(storedUserAddress + 8 + j))/EEPROM.read(storedUserAddress + 8 + j));
+      singlePressureDifference[j] = fabs((*newFootMap - EEPROM.read(storedUserAddress + 8 + j))/EEPROM.read(storedUserAddress + 8 + j));
       
-      pressureDifference += pressureDifference[j];
+      pressureDifference += singlePressureDifference[j];
       
       newFootMap++;
     }
