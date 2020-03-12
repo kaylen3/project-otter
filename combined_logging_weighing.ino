@@ -87,7 +87,8 @@ int checkForInput(){
 void enrollNewUser(){
   //**calls various functions to get the user's name, weight goal, weight measurement, and pressure measurement**/
   
-  int user_address = 0; // need to find way to determine user_address
+  byte existing_users = EEPROM.read(NUMBEROFUSERSADDRESS);
+  int user_address = 1 + (existing_users*25); 
   
   //get user's name
   char * personsName = enterName(); 
