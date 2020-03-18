@@ -14,14 +14,14 @@
 #define D4 7
 #define S0 3
 #define S1 2
-#define S2 1
-#define S3 0
+#define S2 12 //not in tx/rx
+#define S3 13 //not in tx/rx
 #define MUXOUT A0
 #define INPUTUP A1
 #define INPUTDOWN A2
 #define INPUTSELECT A3
 #define NEWUSERENROLL A4
-#define CALIBRATIONFACTOR 22300  //originally 22680
+#define CALIBRATIONFACTOR 23000  //originally 22680, did more testing 23000 was more accurate
 #define POUNDFACTOR 2.20662
 #define NUMBEROFUSERSADDRESS 0
 #define TIMEOUT 5000
@@ -263,6 +263,7 @@ unsigned short takeWeight(){
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Weighing...");
+  delay(3000); //give time for user to put full weight
   for(float q = 0; q<20000; q++){ //cycles through 10000 readings
     LoadCell.update();
     userWeight = LoadCell.getData();
