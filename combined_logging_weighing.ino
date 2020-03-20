@@ -143,6 +143,9 @@ void enrollNewUser(){
     lcd.print("Please step off");
     delay(2000);
   }
+  //increment the number of users stored in the scale 
+  EEPROM.write(NUMBEROFUSERSADDRESS, existing_users+1);
+  
 }
 
 char * enterName() { 
@@ -249,7 +252,7 @@ int checkForStep(){
   LoadCell.update();
   float i = LoadCell.getData();
   if(i>5){ //checks if load cells have exceeded 5 lbs, min weight is 5
-    takeWeight();
+    identifyUser();
   }
   else {
     lcd.setCursor(0,0);
@@ -272,9 +275,7 @@ unsigned short takeWeight(){
     }
   }
   printData(userWeight); //prints the 10000th reading
-  while(userWeight>5){ //pauses while user is still on scale
-    LoadCell.update();
-    userWeight = LoadCell.getData();
+  delay(500); //play around with this value
   }
   lcd.clear();
   return userWeight;
@@ -283,16 +284,24 @@ unsigned short takeWeight(){
 void logWeight(int user_address, unsigned short weight) { 
   //**logs weight entry into EEPROM location for specified user**//
   //Check which weight entry it is
-  byte entry = EEPROM.read(user_address + 24);
+  byte entry = EEPROM.read(user_address + 24) + 1; //added plus one so that (for example) on the second read, entry will be equal to 2
 
-  //store most recent weigh in in EEPROM
+  //store most recent weight in in EEPROM
   EEPROM.update(user_address + 22, weight);
   
   //update number of entries
   EEPROM.write(user_address + 24, EEPROM.read(user_address + 24) + 1);
   
-  //compute exponential moving average and store in EEPROM
-  EEPROM.update(user_address + 20, (2*weight/(entry+1)+(entry-1)*EEPROM.read(user_address + 20))/(entry+1));
+  //check if it is the first entry, if not, do EMA. 
+  if(entry != 1){
+    
+    //compute exponential moving average and store in EEPROM
+    EEPROM.update(user_address + 20, (2*weight/(entry+1)+(entry-1)*EEPROM.read(user_address + 20))/(entry+1));
+  }
+  else{
+    //if it is the first entry, store the weight directly
+    EEPROM.update(user_address + 20, weight);
+  }
 }
 
 void goalStatus(int user_address, int weight_address, unsigned short weight) { //need to figure out where this is being called to see how we can pass the weight_address in, could copy the code from logWeight(), but i think there's a cleaner way
@@ -456,6 +465,7 @@ void identifyUser(){
     totalDifference = PRESSUREWEIGHT*pressureDifference + (1 - PRESSUREWEIGHT)*weightDifference;
   
     //if new total difference value < old total difference value --> replace old total difference value and record user in chosenUser variable
+    
     
     //cycle to next stored user
     storedUserAddress += 25;
