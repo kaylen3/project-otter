@@ -476,12 +476,23 @@ void identifyUser(){
   lcd.setCursor(0,1);
   lcd.print(chosenUser);
   
-  //run a while loop for a given amount of time to allow the user to give an input signalling that they are the wrong user
-  while (int t = 0; t*100 < TIMEOUT, t++){
+  float stillThere = 0;
+  //run a while loop for a given amount of time to allow the user to step off the scale to signal that they are the wrong user
+  while (int t = 0; t*250 < TIMEOUT, t++){
     
-    //if input is received, ask the user to step off the scale and try again, then abort the program (using return) !!!
+    //if user steps off the scale, and ask them to try again and abort the function
+    LoadCell.update();
+    stillThere = LoadCell.getData();
+    if(stillThere < 5){
     
-    delay(100);
+      lcd.clear();
+      lcd.setCursor(0,0);
+      lcd.print("Please Try Again");
+      
+      return;
+    }    
+    
+    delay(250);
   }
   
   
@@ -492,5 +503,5 @@ void identifyUser(){
   //run logPressure()
   
   //display, "Bye ___"
-  
+
 }
