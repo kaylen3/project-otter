@@ -299,7 +299,9 @@ void logWeight(int user_address, unsigned short weight) {
   if(entry != 1){
     
     //compute exponential moving average and store in EEPROM
-    EEPROM.put(user_address + 32, (2*weight/(entry+1)+(entry-1)*EEPROM.get(user_address + 32))/(entry+1));
+    unsigned short oldEMA
+    EEPROM.get(user_address + 32, oldEMA);
+    EEPROM.put(user_address + 32, 2*weight/(entry+1)+(entry-1)*oldEMA/(entry+1));
   }
   else{
     //if it is the first entry, store the weight directly
@@ -410,8 +412,10 @@ void logPressure(int user_address, int *foot_map) {
     }
   }
   else { //Not the first write, need to average the new values with the old ones (using exponential moving average)
+    int oldEMA;
     for(int i = 0; i < 12; ++i) {
-      EEPROM.put(user_address + 8 + (2*i), (2*foot_map[i]/(entry+1)+(entry-1)*EEPROM.get(user_address + 8 + (2*i)))/(entry+1));
+      EEPROM.get(user_address + 8 + (2*i), oldEMA);
+      EEPROM.put(user_address + 8 + (2*i), 2*foot_map[i]/(entry+1)+(entry-1)*oldEMA/(entry+1));
     }
   }
 }
