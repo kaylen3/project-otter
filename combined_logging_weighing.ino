@@ -299,9 +299,7 @@ void logWeight(int user_address, unsigned short weight) {
   if(entry != 1){
     
     //compute exponential moving average and store in EEPROM
-    unsigned short oldEMA
-    EEPROM.get(user_address + 32, oldEMA);
-    EEPROM.put(user_address + 32, 2*weight/(entry+1)+(entry-1)*oldEMA/(entry+1));
+    EEPROM.put(user_address + 32, (2*weight/(entry+1)+(entry-1)*EEPROM.get(user_address + 32))/(entry+1));
   }
   else{
     //if it is the first entry, store the weight directly
@@ -309,7 +307,7 @@ void logWeight(int user_address, unsigned short weight) {
   }
 }
 
-void goalStatus(int user_address, int weight_address, unsigned short weight) { //need to figure out where this is being called to see how we can pass the weight_address in, could copy the code from logWeight(), but i think there's a cleaner way
+void goalStatus(int user_address, unsigned short weight) {
   //**Calculates and prints user's progress relative to their goals**//
   
   //Calculate goal difference and weight difference 
@@ -412,10 +410,8 @@ void logPressure(int user_address, int *foot_map) {
     }
   }
   else { //Not the first write, need to average the new values with the old ones (using exponential moving average)
-    int oldEMA;
     for(int i = 0; i < 12; ++i) {
-      EEPROM.get(user_address + 8 + (2*i), oldEMA);
-      EEPROM.put(user_address + 8 + (2*i), 2*foot_map[i]/(entry+1)+(entry-1)*oldEMA/(entry+1));
+      EEPROM.put(user_address + 8 + (2*i), (2*foot_map[i]/(entry+1)+(entry-1)*EEPROM.get(user_address + 8 + (2*i)))/(entry+1));
     }
   }
 }
@@ -423,11 +419,13 @@ void logPressure(int user_address, int *foot_map) {
 void identifyUser(){
   //** Compares weight/pressure measurements of the current user to all stored profiles and returns the memory location of the user that most closely matches the current user.**//
   
-  double totalDifference;
-  double pressureDifference = 0;
-  double singlePressureDifference[12];
-  double weightDifference;
+  unsigned short totalDifference;
+  int singlePressureDifference[12];
+  unsigned short weightDifference;
+  unsigned short bestTotalDifference = 30000;
   int chosenUser = NUMBEROFUSERSADDRESS + 1;
+  unsigned short userWeight;
+  int userPressure; 
   
   //take weight reading
   unsigned short newWeight = takeWeight();
@@ -444,68 +442,75 @@ void identifyUser(){
   //for loop that iterates through all stored user profiles 
   for(int i = 0; i < numberOfUsers; i++){
     
+    int pressureDifference = 0;
     
     //nested for loop computing the percent difference between all cells in the pressure measurements
     for(int j = 0; j < 12; j++){
-      singlePressureDifference[j] = fabs((*newFootMap - EEPROM.get(storedUserAddress + 8 + (2*j)))/EEPROM.get(storedUserAddress + 8 + (2*j)));
+      EEPROM.get(storedUserAddress + 8 + (2*j), userPressure);
+      singlePressureDifference[j] = fabs((*newFootMap - userPressure)/userPressure);
       
       pressureDifference += singlePressureDifference[j];
       
-      newFootMap++;
+      newFootMap += 2;
     }
     pressureDifference /= 12;
     
-    newFootMap -= 12; 
+    newFootMap -= 24; 
    
     //compute difference in EMA weight in profile compared to measured weight
-    weightDifference = fabs((newWeight - EEPROM.get(storedUserAddress + 32))/EEPROM.get(storedUserAddress + 32)); 
+    EEPROM.get(storedUserAddress + 32, userWeight);
+    weightDifference = fabs((newWeight - userWeight)/userWeight); 
   
     //compute total difference value 
     totalDifference = PRESSUREWEIGHT*pressureDifference + (1 - PRESSUREWEIGHT)*weightDifference;
   
     //if new total difference value < old total difference value --> replace old total difference value and record user in chosenUser variable
-    
+    if(totalDifference < bestTotalDifference) {
+      bestTotalDifference = totalDifference;
+      chosenUser = storedUserAddress;
+    }
     
     //cycle to next stored user
     storedUserAddress += 37;
   }
   
-  //Free newFootMap pointer
-  free(newFootMap);
+  //Get chosen user's name
+  char name[USERNAME_LENGTH];
+  for(int i = 0; i < USERNAME_LENGTH; i++){
+    name[i] = EEPROM.read(chosenUser + i);
+  }  
   
   //display, "Hello ___" to the chosen user
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Hello ");
   lcd.setCursor(0,1);
-  lcd.print(chosenUser);
+  lcd.print(name); 
   
-  float stillThere = 0;
-  //run a while loop for a given amount of time to allow the user to step off the scale to signal that they are the wrong user
-  while (int t = 0; t*250 < TIMEOUT, t++){
+  //run a while loop for a given amount of time to allow the user to give an input signalling that they are the wrong user
+  while (int t = 0; t*100 < TIMEOUT, t++){
     
-    //if user steps off the scale, and ask them to try again and abort the function
-    LoadCell.update();
-    stillThere = LoadCell.getData();
-    if(stillThere < 5){
+    //if input is received, ask the user to step off the scale and try again, then abort the program (using return) !!!
     
-      lcd.clear();
-      lcd.setCursor(0,0);
-      lcd.print("Please Try Again");
-      
-      return;
-    }    
-    
-    delay(250);
+    delay(100);
   }
   
+  goalStatus(chosenUser, newWeight);
+  //MAKE SURE TO RUN GOALSTATUS BEFORE LOGWEIGHT, this is to ensure that it can calculate difference from last weight before overwriting that value
   
-  //run goalStatus() **MAKE SURE TO RUN GOALSTATUS BEFORE LOGWEIGHT, this is to ensure that it can calculate difference from last weight before overwriting that value
+  logWeight(chosenUser, newWeight);
   
-  //run logWeight()
+  logPressure(chosenUser, newFootMap);
   
-  //run logPressure()
+  //Free newFootMap pointer
+  free(newFootMap);
   
-  //display, "Bye ___"
-
+  //display, "Bye ___" to chosen user
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Goodbye ");
+  lcd.setCursor(0,1);
+  lcd.print(name); 
+  
+  return;
 }
