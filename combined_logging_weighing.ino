@@ -116,6 +116,7 @@ void enrollNewUser(){
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Please step on");
+    delay(2000);
   
     //get user's weight
     unsigned short appliedWeight = 0;
