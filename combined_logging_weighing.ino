@@ -93,11 +93,16 @@ void enrollNewUser(){
   //clear the number of writes value in memory
   EEPROM.update(user_address + 36, 0);
   
+  //clear the name cells in memory in case the length of the user's name is less than USERNAME_LENGTH
+  for(i = 0; i < USERNAME_LENGTH; i++){
+    EEPROM.update(user_address + i, ' ');
+  }
+  
   //get user's name
   char * personsName = enterName(); 
   
    //store user's name in EEPROM
-  for(int i = 0 ; i < USERNAME_LENGTH - 1 ; i++){
+  for(int i = 0 ; i < USERNAME_LENGTH; i++){
     EEPROM.write(user_address + i, *personsName);
     personsName++;
   }
@@ -110,6 +115,8 @@ void enrollNewUser(){
   EEPROM.put(user_address + 6, weightGoal);
  
   //have the user step on and off the scale 5 times
+  float step_on_flag;
+  float step_off_flag;
   for(int i = 0; i<5; i++) { 
     
     //instruct user to step on the scale
@@ -117,10 +124,10 @@ void enrollNewUser(){
     lcd.setCursor(0,0);
     lcd.print("Please step on");
     
-    float j = 0;
-    while(j < 5){
+    step_on_flag = 0;
+    while(step_on_flag < 5){
     LoadCell.update();
-    j = LoadCell.getData();
+    step_on_flag = LoadCell.getData();
     }
   
     //get user's weight
@@ -150,7 +157,14 @@ void enrollNewUser(){
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Please step off");
-    delay(2000);
+    
+    step_off_flag = 10;
+    while(step_off_flag > 5){
+    LoadCell.update();
+    step_off_flag = LoadCell.getData();
+    }
+    delay(1000);
+    
   }
   //increment the number of users stored in the scale 
   EEPROM.write(NUMBEROFUSERSADDRESS, existing_users+1);
