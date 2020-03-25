@@ -510,14 +510,14 @@ void identifyUser(){
   lcd.setCursor(0,1);
   lcd.print(name); 
   
-  float stillThere = 0;
+  float wrong_user_flag = 10;
   //run a while loop for a given amount of time to allow the user to step off the scale to signal that they are the wrong user
   for(int t = 0; t*250 < TIMEOUT; t++){
   
     //if user steps off the scale, and ask them to try again and abort the function
     LoadCell.update();
-    stillThere = LoadCell.getData();
-    if(stillThere < 5){
+    wrong_user_flag = LoadCell.getData();
+    if(wrong_user_flag < 5){
 
       lcd.clear();
       lcd.setCursor(0,0);
