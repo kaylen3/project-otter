@@ -116,7 +116,12 @@ void enrollNewUser(){
     lcd.clear();
     lcd.setCursor(0,0);
     lcd.print("Please step on");
-    delay(2000);
+    
+    float j = 0;
+    while(j < 5){
+    LoadCell.update();
+    j = LoadCell.getData();
+    }
   
     //get user's weight
     unsigned short appliedWeight = 0;
