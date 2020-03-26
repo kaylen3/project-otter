@@ -123,16 +123,9 @@ void enrollNewUser(){
     lcd.setCursor(0,0);
     lcd.print("Please step on");
     
-    //waitForStep(1);
-  
-    //get user's weight
-    unsigned short appliedWeight = 0;
-    unsigned short weight = 0;
-    while(appliedWeight<5){ //wait until user steps on scale
-      LoadCell.update();
-      appliedWeight = LoadCell.getData();
-      weight = takeWeight();
-    }
+    //wait for user to step on the scale
+    waitForStep(1);
+    unsigned short weight = takeWeight();
   
     //store user's weight in EEPROM
     logWeight(user_address, weight);
@@ -154,6 +147,7 @@ void enrollNewUser(){
     lcd.print("Please step off");
     
     waitForStep(0);
+    lcd.clear();
     
   }
   //increment the number of users stored in the scale 
@@ -163,11 +157,9 @@ void enrollNewUser(){
 
 char * enterName() { 
   //**instructs the user to input a name, returns said name via a pointer**//
-  char *username = (char*)malloc (sizeof (char) * USERNAME_LENGTH);
+  char *user = (char*)malloc (sizeof (char) * USERNAME_LENGTH);
   char letter = 'A';
-  char user[USERNAME_LENGTH];
-  int name_index = 1;
-  int name_cursor = 0;
+  int name_index = 0;
   int name_done_flag = 0;
   lcd.clear();
   lcd.setCursor(0,0);
@@ -178,16 +170,17 @@ char * enterName() {
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Enter your name:");
+  
+  //run a while loop to allow for 6 characters to be selected
   while((name_index < USERNAME_LENGTH) && (name_done_flag == 0)){
-    name_cursor = name_index-1;
-    lcd.setCursor(name_cursor,1);
+    lcd.setCursor(name_index,1);
     lcd.print(letter);
     if(digitalRead(INPUTUP) == LOW){ //input == up
-      if(letter != '['){
+      if(letter != 'Z'){
         letter++;
       }
       else{
-        letter = 'Z';
+        letter = 'A';
       }
       delay(200);
     }
@@ -201,7 +194,7 @@ char * enterName() {
       delay(200);
     }
     else if(digitalRead(INPUTSELECT) == LOW){ //input == select
-      user[name_index-1] = letter;
+      user[name_index] = letter;
       name_index++;
       letter = 'A';
       delay(200);
@@ -210,13 +203,11 @@ char * enterName() {
       name_done_flag = 1;
     }
   }
-  for(int i = 0; i < name_index-2; i++){
-   username[i] = user[i];    
+  
+  for(int i = name_index; i < USERNAME_LENGTH; i++){
+    user[i] = ' ';
   }
-  for(int i = name_index-2; i < USERNAME_LENGTH; i++){
-    username[i] = ' ';
-  }
-  return username;
+  return user;
 }
 
 unsigned short enterWeightGoal() {
@@ -331,10 +322,14 @@ void goalStatus(int user_address, unsigned short weight) {
   int weight_difference = weight - last_weight;
 
   //Print status
+  
   lcd.clear();
   lcd.setCursor(0,0);
+  
   if (weight_difference == 0){
-    lcd.print("Your weight has not changed");
+    lcd.print("Your weight has");
+    lcd.setCursor(0,1);
+    lcd.print("not changed");
   }
   else if (weight_difference > 0) {
     lcd.print("You have gained");
@@ -355,10 +350,12 @@ void goalStatus(int user_address, unsigned short weight) {
 
   lcd.clear();
   lcd.setCursor(0,0);
-  if (goal_difference = 0){
-    lcd.print("You reached your weight goal!");
+  if (goal_difference == 0){
+    lcd.print("You reached your"); 
+    lcd.setCursor(0,1);
+    lcd.print("weight goal!");
   }
-  else if (weight_difference > 0) {
+  else if (goal_difference > 0) {
     lcd.print("You are ");
     lcd.setCursor(8,0);
     lcd.print(goal_difference);
@@ -506,18 +503,17 @@ void identifyUser(){
     storedUserAddress += 37;
   }
   
-  //Get chosen user's name
-  char name[USERNAME_LENGTH];
-  for(int i = 0; i < USERNAME_LENGTH; i++){
-    name[i] = EEPROM.read(chosenUser + i);
-  }  
-  
   //display, "Hello ___" to the chosen user
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Hello ");
-  lcd.setCursor(0,1);
-  lcd.print(name); 
+  
+  //Get and display chosen user's name
+  for(int i = 0; i < USERNAME_LENGTH; i++){
+    lcd.setCursor(i,1);
+    lcd.print((char)EEPROM.read(chosenUser + i));
+  }  
+  
   
   float wrong_user_flag = 10;
   //run a while loop for a given amount of time to allow the user to step off the scale to signal that they are the wrong user
@@ -553,9 +549,12 @@ void identifyUser(){
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Goodbye ");
-  lcd.setCursor(0,1);
-  lcd.print(name); 
-  delay(3000);
+  
+  //Get and display chosen user's name
+  for(int i = 0; i < USERNAME_LENGTH; i++){
+    lcd.setCursor(i,1);
+    lcd.print((char)EEPROM.read(chosenUser + i));
+  } 
 
   waitForStep(0);
   lcd.clear();
@@ -581,8 +580,6 @@ void waitForStep(int off_on){
       step_flag = LoadCell.getData();
     }
   }
-    
-  delay(2000); //try to prevent it from weighing after majority of weight is shifted off / minority of weight is shifted on
 }
     
     
