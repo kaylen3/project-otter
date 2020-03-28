@@ -434,10 +434,10 @@ void logPressure(int user_address, int *foot_map) {
 void identifyUser(){
   //** Compares weight/pressure measurements of the current user to all stored profiles and returns the memory location of the user that most closely matches the current user.**//
   
-  unsigned short totalDifference;
-  int singlePressureDifference[12];
-  unsigned short weightDifference;
-  unsigned short bestTotalDifference = 30000;
+  float totalDifference;
+  float singlePressureDifference[12];
+  float weightDifference;
+  float bestTotalDifference = 30000;
   int chosenUser = NUMBEROFUSERSADDRESS + 1;
   unsigned short userWeight;
   int userPressure; 
@@ -469,12 +469,12 @@ void identifyUser(){
   //for loop that iterates through all stored user profiles 
   for(int i = 0; i < numberOfUsers; i++){
     
-    int pressureDifference = 0;
+    float pressureDifference = 0;
     
     //nested for loop computing the percent difference between all cells in the pressure measurements
     for(int j = 0; j < 12; j++){
       EEPROM.get(storedUserAddress + 8 + (2*j), userPressure);
-      singlePressureDifference[j] = fabs((*newFootMap - userPressure)/userPressure);
+      singlePressureDifference[j] = fabsf((*newFootMap - userPressure)/(float)userPressure);
       
       pressureDifference += singlePressureDifference[j];
       
@@ -486,7 +486,7 @@ void identifyUser(){
    
     //compute difference in EMA weight in profile compared to measured weight
     EEPROM.get(storedUserAddress + 32, userWeight);
-    weightDifference = fabs((newWeight - userWeight)/userWeight); 
+    weightDifference = fabsf((newWeight - userWeight)/(float)userWeight); 
   
     //compute total difference value 
     totalDifference = PRESSUREWEIGHTING*pressureDifference + (1 - PRESSUREWEIGHTING)*weightDifference;
