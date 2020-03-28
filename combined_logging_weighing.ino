@@ -30,7 +30,7 @@
 LiquidCrystal lcd(RS, E, D4, D5, D6, D7);
 HX711_ADC LoadCell(DOUT,CLK);
 
-byte select_matrix [12] = { B0000, B1000, B0100, B1100, B0010, B1010, B0110, B1110, B0001, B1001, B0101, B1101 };
+byte select_matrix [12] = { B1101, B0101, B1001, B0001, B1110, B0110 ,B1010, B0010, B1100, B0100, B1000, B0000 };
 int select_pin [4] = { S3, S2, S1, S0 }; //pin3=S0, pin2=S1, pin1=S2, pin0=S3; pins are labelled backwards on MUX, S0 is actually S3, ...
 
 void setup();
@@ -136,7 +136,7 @@ void enrollNewUser(){
     
     //get user's foot map
     int* foot_map = takePressure();
-  
+    
     //store foot map in EEPROM
     logPressure(user_address, foot_map);
     free(foot_map);
@@ -388,11 +388,9 @@ int printData(int i){
 
 int * takePressure() {
   //** Cycles through 12 pressure sensors and returns pointer to array with their measurements in it**//
-  delay(2000);// 2 second delay to allow user to stop moving
-  int *foot_map = (int*)malloc (sizeof (int) * 12);
-  //int foot_map [12] = {0}; I don't think we need to do this anymore with the line above 
+  int *foot_map = (int*)malloc (sizeof (int) * 12); 
   
-  for(byte select_signal=0; select_signal < 12; select_signal++){ 
+  for(byte select_signal = 0; select_signal < 12; select_signal++){ 
     
     //Set the MUX select signal
     for(int i=0; i < 4; i++) {
@@ -403,15 +401,15 @@ int * takePressure() {
     int intermediate_pressure = 0;
     for(int sample=0; sample < 10; sample++) {
       intermediate_pressure = intermediate_pressure + analogRead(A0);
-      delay(500);
+      delay(25);
     }
 
     //Average the 10 samples and store in foot map
     foot_map[select_signal] = intermediate_pressure / 10;
-    
-    //Return a pointer to the first value of the foot map
-    return foot_map; 
   }
+  
+  //Return a pointer to the first value of the foot map
+  return foot_map; 
 }
 
 void logPressure(int user_address, int *foot_map) {
