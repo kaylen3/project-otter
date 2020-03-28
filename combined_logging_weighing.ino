@@ -43,11 +43,13 @@ unsigned short takeWeight();
 void logWeight(int, unsigned short);
 void goalStatus(int, int, unsigned short);
 int printData(int);
-int * takePressure();
-void logPressure(int, int *);
+void takePressure();
+void logPressure(int);
 void identifyUser();
 void waitForStep(int);
 
+//global variables:
+int foot_map[12] = {};
 
 void setup() {
   //**Initializes pins, initializes load cells, and welcomes user**//
@@ -115,8 +117,8 @@ void enrollNewUser(){
   //store user's weight goal in EEPROM
   EEPROM.put(user_address + 6, weightGoal);
  
-  //have the user step on and off the scale 5 times
-  for(int i = 0; i<5; i++) { 
+  //have the user step on and off the scale 3 times
+  for(int i = 0; i<3; i++) { 
     
     //instruct user to step on the scale
     lcd.clear();
@@ -135,11 +137,11 @@ void enrollNewUser(){
     lcd.print("Scanning..."); //might just wanna get rid of this, scanning is probably too fast
     
     //get user's foot map
-    int* foot_map = takePressure();
+    takePressure();
     
     //store foot map in EEPROM
-    logPressure(user_address, foot_map);
-    free(foot_map);
+    logPressure(user_address);
+    
     
     //instruct user to step off the scale
     lcd.clear();
@@ -386,9 +388,8 @@ int printData(int i){
     lcd.print(i, 1);
 }
 
-int * takePressure() {
+void takePressure() {
   //** Cycles through 12 pressure sensors and returns pointer to array with their measurements in it**//
-  int *foot_map = (int*)malloc (sizeof (int) * 12); 
   
   for(byte select_signal = 0; select_signal < 12; select_signal++){ 
     
@@ -409,10 +410,10 @@ int * takePressure() {
   }
   
   //Return a pointer to the first value of the foot map
-  return foot_map; 
+  return; 
 }
 
-void logPressure(int user_address, int *foot_map) {
+void logPressure(int user_address) {
   //** Takes pointer to foot map created by takePressure() and stores it in the user's profile in EEPROM**//
   //Check if it is the first input
   byte entry = EEPROM.read(user_address + 36);
@@ -461,8 +462,8 @@ void identifyUser(){
   unsigned short newWeight = takeWeight();
   
   //take pressure reading
-  int* newFootMap = takePressure(); 
-  
+  takePressure(); 
+
   //initialize variable to the first memory cell of the first stored user
   int storedUserAddress = NUMBEROFUSERSADDRESS + 1;
   
@@ -474,18 +475,16 @@ void identifyUser(){
     //nested for loop computing the percent difference between all cells in the pressure measurements
     for(int j = 0; j < 12; j++){
       EEPROM.get(storedUserAddress + 8 + (2*j), userPressure);
-      singlePressureDifference[j] = fabsf((*newFootMap - userPressure)/(float)userPressure);
+      singlePressureDifference[j] = fabsf((foot_map[j] - userPressure)/(float)userPressure);
       
       pressureDifference += singlePressureDifference[j];
       
-      newFootMap += 2;
     }
     pressureDifference /= 12;
-    
-    newFootMap -= 24; 
    
     //compute difference in EMA weight in profile compared to measured weight
     EEPROM.get(storedUserAddress + 32, userWeight);
+    
     weightDifference = fabsf((newWeight - userWeight)/(float)userWeight); 
   
     //compute total difference value 
@@ -538,10 +537,7 @@ void identifyUser(){
   
   logWeight(chosenUser, newWeight);
   
-  logPressure(chosenUser, newFootMap);
-  
-  //Free newFootMap pointer
-  free(newFootMap);
+  logPressure(chosenUser);
   
   //display, "Bye ___" to chosen user
   lcd.clear();
