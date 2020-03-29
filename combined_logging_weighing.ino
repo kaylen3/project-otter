@@ -127,6 +127,7 @@ void enrollNewUser(){
     
     //wait for user to step on the scale
     waitForStep(1);
+    delay(500);
     unsigned short weight = takeWeight();
   
     //store user's weight in EEPROM
@@ -260,6 +261,7 @@ int checkForStep(){
   LoadCell.update();
   float i = LoadCell.getData();
   if(i>5){ //checks if load cells have exceeded 5 lbs, min weight is 5
+    delay(500);
     identifyUser();
   }
   else {
@@ -435,9 +437,9 @@ void logPressure(int user_address) {
 void identifyUser(){
   //** Compares weight/pressure measurements of the current user to all stored profiles and returns the memory location of the user that most closely matches the current user.**//
   
-  float totalDifference;
+
+  float totalPressureDifference = 0.0;
   float singlePressureDifference[12];
-  float weightDifference;
   float bestTotalDifference = 30000;
   int chosenUser = NUMBEROFUSERSADDRESS + 1;
   unsigned short userWeight;
@@ -445,6 +447,10 @@ void identifyUser(){
 
   //check how many users are registered
   byte numberOfUsers = EEPROM.read(NUMBEROFUSERSADDRESS);
+
+  float weightDifference[numberOfUsers] = {};
+  float totalDifference[numberOfUsers] = {};
+  float pressureDifference[numberOfUsers] = {};
   
   //make sure at least one profile is stored in the scale
   if(numberOfUsers == 0){
@@ -470,48 +476,47 @@ void identifyUser(){
   //for loop that iterates through all stored user profiles 
   for(int i = 0; i < numberOfUsers; i++){
     
-    float pressureDifference = 0;
-    
     //nested for loop computing the percent difference between all cells in the pressure measurements
     for(int j = 0; j < 12; j++){
       EEPROM.get(storedUserAddress + 8 + (2*j), userPressure);
       
-      if(foot_map[j] >= userPressure && userPressure != 0){
-        singlePressureDifference[j] = (foot_map[j] - userPressure)/(float)userPressure;
-      }
-      else if(foot_map[j] < userPressure){
-        singlePressureDifference[j] = (userPressure - foot_map[j])/(float)userPressure;
+      if(foot_map[j] >= userPressure){
+        singlePressureDifference[j] = (foot_map[j] - userPressure);
       }
       else{
-        singlePressureDifference[j] = (foot_map[j] - 0.1)/0.1;
+        singlePressureDifference[j] = (userPressure - foot_map[j]);
       }
-      
-      pressureDifference += singlePressureDifference[j];
-      
+    
+      pressureDifference[i] += singlePressureDifference[j];      
     }
-    pressureDifference /= 12;
-   
+    
+    totalPressureDifference += pressureDifference[i];
+    
     //compute difference in EMA weight in profile compared to measured weight
     EEPROM.get(storedUserAddress + 32, userWeight);
     
     if(newWeight >= userWeight){
-      weightDifference = (newWeight - userWeight)/(float)userWeight; 
+      weightDifference[i] = (newWeight - userWeight)/(float)userWeight; 
     }
     else{
-      weightDifference = (userWeight - newWeight)/(float)userWeight; 
+      weightDifference[i] = (userWeight - newWeight)/(float)userWeight; 
     }    
-  
-    //compute total difference value 
-    totalDifference = PRESSUREWEIGHTING*pressureDifference + (1 - PRESSUREWEIGHTING)*weightDifference;
-  
-    //if new total difference value < old total difference value --> replace old total difference value and record user in chosenUser variable
-    if(totalDifference < bestTotalDifference) {
-      bestTotalDifference = totalDifference;
-      chosenUser = storedUserAddress;
-    }
-    
+
     //cycle to next stored user
     storedUserAddress += 37;
+  }
+
+  
+  //compute total difference value 
+  for(int k = 0; k < numberOfUsers; k++){
+    pressureDifference[k] /= totalPressureDifference;
+    totalDifference[k] = PRESSUREWEIGHTING*pressureDifference[k] + (1 - PRESSUREWEIGHTING)*weightDifference[k];
+
+    //if new total difference value < old total difference value --> replace old total difference value and record user in chosenUser variable
+    if(totalDifference[k] < bestTotalDifference) {
+      bestTotalDifference = totalDifference[k];
+      chosenUser = storedUserAddress - 37*(numberOfUsers - (k));
+    }
   }
   
   //display, "Hello ___" to the chosen user
