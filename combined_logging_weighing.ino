@@ -485,7 +485,12 @@ void identifyUser(){
     //compute difference in EMA weight in profile compared to measured weight
     EEPROM.get(storedUserAddress + 32, userWeight);
     
-    weightDifference = fabsf((newWeight - userWeight)/(float)userWeight); 
+    if(newWeight >= userWeight){
+      weightDifference = (newWeight - userWeight)/(float)userWeight; 
+    }
+    else{
+      weightDifference = (userWeight - newWeight)/(float)userWeight; 
+    }    
   
     //compute total difference value 
     totalDifference = PRESSUREWEIGHTING*pressureDifference + (1 - PRESSUREWEIGHTING)*weightDifference;
