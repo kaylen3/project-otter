@@ -475,7 +475,16 @@ void identifyUser(){
     //nested for loop computing the percent difference between all cells in the pressure measurements
     for(int j = 0; j < 12; j++){
       EEPROM.get(storedUserAddress + 8 + (2*j), userPressure);
-      singlePressureDifference[j] = fabsf((foot_map[j] - userPressure)/(float)userPressure);
+      
+      if(foot_map[j] >= userPressure && userPressure != 0){
+        singlePressureDifference[j] = (foot_map[j] - userPressure)/(float)userPressure;
+      }
+      else if(foot_map[j] < userPressure){
+        singlePressureDifference[j] = (userPressure - foot_map[j])/(float)userPressure;
+      }
+      else{
+        singlePressureDifference[j] = (foot_map[j] - 0.1)/0.1;
+      }
       
       pressureDifference += singlePressureDifference[j];
       
